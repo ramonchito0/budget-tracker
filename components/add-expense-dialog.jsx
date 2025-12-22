@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react"
 import { addExpense } from "@/lib/expenses"
 import { getCategories } from "@/lib/categories"
+import { createClient } from "@/lib/supabase/client"
+
 import {
   Dialog,
   DialogContent,
@@ -21,16 +23,50 @@ import {
 } from "@/components/ui/select"
 
 export default function AddExpenseDialog() {
+  const supabase = createClient()
+
   const [categories, setCategories] = useState([])
   const [categoryId, setCategoryId] = useState("")
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const [date, setDate] = useState(today())
 
+  /* ----------------------------------------
+     Load categories
+  ---------------------------------------- */
+  async function loadCategories() {
+    const data = await getCategories()
+    setCategories(data)
+  }
 
 
   useEffect(() => {
-    getCategories().then(setCategories)
+    let channel
+
+    async function init() {
+      await loadCategories()
+
+      channel = supabase
+        .channel("categories-for-expenses")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "categories",
+          },
+          () => {
+            loadCategories()
+          }
+        )
+        .subscribe()
+    }
+
+    init()
+
+    return () => {
+      if (channel) supabase.removeChannel(channel)
+    }
   }, [])
 
   async function handleSubmit(e) {
@@ -47,11 +83,21 @@ export default function AddExpenseDialog() {
     })
 
     setLoading(false)
-    setOpen(false) 
+    setOpen(false)
+
+    // reset form
+    e.target.reset()
+    setDate(today())
   }
 
   return (
-    <Dialog>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        setOpen(v)
+        if (v) loadCategories() // 🔑 refresh when opened
+      }}
+    >
       <DialogTrigger asChild>
         <Button>Add Expense</Button>
       </DialogTrigger>
@@ -61,40 +107,81 @@ export default function AddExpenseDialog() {
           <DialogTitle>Add Expense</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <Input name="title" placeholder="Title" required />
-          <Input name="amount" type="number" required />
+            <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Title */}
+            <div className="space-y-1">
+                <label className="text-sm font-medium">
+                Title
+                </label>
+                <Input
+                name="title"
+                placeholder="e.g. Grocery shopping"
+                autoFocus
+                required
+                />
+            </div>
 
-          {/* Category dropdown */}
-          <Select value={categoryId} onValueChange={setCategoryId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select category" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map(cat => (
-                <SelectItem key={cat.id} value={cat.id}>
-                  {cat.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            {/* Amount */}
+            <div className="space-y-1">
+                <label className="text-sm font-medium">
+                Amount
+                </label>
+                <Input
+                name="amount"
+                type="number"
+                step="0.01"
+                placeholder="0.00"
+                required
+                />
+            </div>
 
-            <Input
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            required
-            />
+            {/* Category */}
+            <div className="space-y-1">
+                <label className="text-sm font-medium">
+                Category
+                </label>
+                <Select value={categoryId} onValueChange={setCategoryId}>
+                <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                    {!categories.length && (
+                    <div className="px-3 py-2 text-sm text-muted-foreground">
+                        No categories yet
+                    </div>
+                    )}
+                    {categories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                        {cat.name}
+                    </SelectItem>
+                    ))}
+                </SelectContent>
+                </Select>
+            </div>
 
-            <Button disabled={loading}>
-            {loading ? "Saving…" : "Save"}
+            {/* Date */}
+            <div className="space-y-1">
+                <label className="text-sm font-medium">
+                Date
+                </label>
+                <Input
+                type="date"
+                value={date}
+                onChange={e => setDate(e.target.value)}
+                required
+                />
+            </div>
+
+            {/* Submit */}
+            <Button type="submit" disabled={loading}>
+                {loading ? "Saving…" : "Save"}
             </Button>
-        </form>
+            </form>
+
       </DialogContent>
     </Dialog>
   )
 }
-
 
 function today() {
   return new Date().toISOString().split("T")[0]

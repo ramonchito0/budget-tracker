@@ -1,4 +1,6 @@
-import { LayoutDashboard, LogOut } from "lucide-react";
+import Link from "next/link"
+import { LayoutDashboard, Tags, CreditCard } from "lucide-react"
+
 import LogoutButton from "./logout-button";
 
 export default function Sidebar() {
@@ -9,14 +11,39 @@ export default function Sidebar() {
         <p className="text-sm text-muted-foreground">Personal finance</p>
       </div>
 
-      <nav className="space-y-2">
-        <div className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium bg-muted">
-          <LayoutDashboard className="h-4 w-4" />
-          Dashboard
-        </div>
+    <nav className="space-y-1">
+        <Link
+            href="/dashboard"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
+        >
+            <LayoutDashboard size={18} />
+            Dashboard
+        </Link>
 
-        <LogoutButton />
-      </nav>
+        <Link
+            href="/categories"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
+        >
+            <Tags size={18} />
+            Categories
+        </Link>
+
+        {/* Placeholder for next step */}
+        <Link
+            href="/transactions"
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
+        >
+            <CreditCard size={18} />
+            Transactions
+        </Link>
+    </nav>
+
+    {/* Spacer */}
+    <div className="flex-1" />
+
+    {/* Logout */}
+    <LogoutButton />
+
     </aside>
   );
 }
