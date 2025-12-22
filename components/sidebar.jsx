@@ -36,6 +36,14 @@ export default function Sidebar() {
             <CreditCard size={18} />
             Transactions
         </Link>
+        
+        <Link
+          href="/data"
+          className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
+        >
+          Import / Export
+        </Link>
+
     </nav>
 
     {/* Spacer */}
