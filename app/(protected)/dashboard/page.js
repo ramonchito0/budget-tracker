@@ -1,11 +1,17 @@
-import { createClient } from "@/lib/supabase/server"
+import AddTransactionDialog from "@/components/add-transaction-dialog"
+import RecentTransactions from "@/components/dashboard/recent-transactions"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import AddExpenseDialog from "@/components/add-expense-dialog"
-import ExpensesSection from "@/components/expenses-section"
-import ExpenseTable from "@/components/expense-table"
-import CategoryManager from "@/components/category-manager"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
+import { formatPeso } from "@/lib/currency"
+import { createClient } from "@/lib/supabase/client"
 
 export default async function DashboardPage() {
+  // 🔧 temporary static values (we’ll replace with real data)
+  const totalIncome = 3500
+  const totalExpenses = 2000
+  const balance = totalIncome - totalExpenses
+  const savingsRate = ((balance / totalIncome) * 100).toFixed(1)
+
   const supabase = await createClient()
   const {
     data: { user },
@@ -25,69 +31,122 @@ export default async function DashboardPage() {
         </div>
 
         {/* Client component */}
-        <AddExpenseDialog />
+        <AddTransactionDialog />
       </div>
 
-      {/* Summary cards (we'll wire these later) */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* KPI Cards */}
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium">Today</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₱0.00</div>
-            <p className="text-xs text-muted-foreground">Net today</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              This Month
+              Total Balance
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₱0.00</div>
+            <div className="text-2xl font-bold text-green-600">
+              {formatPeso(balance)}
+            </div>
             <p className="text-xs text-muted-foreground">
-              Total expenses
+              +{savingsRate}% from income
             </p>
           </CardContent>
         </Card>
 
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">
-              Top Expense
+              Total Income
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">₱0.00</div>
+            <div className="text-2xl font-bold text-green-600">
+              {formatPeso(totalIncome)}
+            </div>
             <p className="text-xs text-muted-foreground">
-              This month
+              +12% from last month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Expenses
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">
+              {formatPeso(totalExpenses)}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              +8% from last month
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">
+              Savings Rate
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {savingsRate}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Target: 20%
             </p>
           </CardContent>
         </Card>
       </div>
 
-<Card>
-  <CardHeader>
-    <CardTitle>Categories</CardTitle>
-  </CardHeader>
-  <CardContent>
-    <CategoryManager />
-  </CardContent>
-</Card>
+      {/* Tabs */}
+      <Tabs defaultValue="overview" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="transactions">Transactions</TabsTrigger>
+        </TabsList>
 
+        {/* Overview */}
+        <TabsContent value="overview">
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Spending by Category</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Your expense breakdown for this month
+                </p>
+              </CardHeader>
+              <CardContent className="flex items-center justify-center h-[320px] text-muted-foreground">
+                {/* Chart placeholder */}
+                Chart goes here
+              </CardContent>
+            </Card>
 
-      {/* Expenses */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Transactions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ExpensesSection />
-        </CardContent>
-      </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle>Monthly Trends</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  Income vs Expenses over time
+                </p>
+              </CardHeader>
+              <CardContent className="flex items-center justify-center h-[320px] text-muted-foreground">
+                {/* Chart placeholder */}
+                Chart goes here
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
+        {/* Transactions */}
+        <TabsContent value="transactions">
+          <div className="text-sm bg-white">
+              {/* other cards */}
+              <RecentTransactions />
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
