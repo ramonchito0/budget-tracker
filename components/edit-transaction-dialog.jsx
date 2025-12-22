@@ -78,55 +78,97 @@ export default function EditTransactionDialog({
           <DialogTitle>Edit Transaction</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Type */}
-          <Select value={type} onValueChange={setType}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="expense">Expense</SelectItem>
-              <SelectItem value="income">Income</SelectItem>
-            </SelectContent>
-          </Select>
+<form onSubmit={handleSubmit} className="space-y-4">
+  
+  {/* Date */}
+  <div className="space-y-1">
+    <label className="text-sm font-medium">
+      Date
+    </label>
+    <Input
+      type="date"
+      value={date}
+      onChange={e => setDate(e.target.value)}
+      required
+    />
+  </div>
 
-          <Input
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            required
-          />
+  {/* Type */}
+  <div className="space-y-1">
+    <label className="text-sm font-medium">
+      Transaction Type
+    </label>
+    <Select value={type} onValueChange={setType}>
+      <SelectTrigger>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="expense">Expense</SelectItem>
+        <SelectItem value="income">Income</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
 
-          <Input
-            type="number"
-            value={amount}
-            onChange={e => setAmount(e.target.value)}
-            required
-          />
+{/* Category */}
+  <div className="space-y-1">
+    <label className="text-sm font-medium">
+      Category
+    </label>
+    <Select value={categoryId} onValueChange={setCategoryId}>
+      <SelectTrigger>
+        <SelectValue placeholder="Select category" />
+      </SelectTrigger>
+      <SelectContent>
+        {!categories.length && (
+          <div className="px-3 py-2 text-sm text-muted-foreground">
+            No categories available
+          </div>
+        )}
+        {categories.map(cat => (
+          <SelectItem key={cat.id} value={cat.id}>
+            {cat.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  </div>
 
-          <Select value={categoryId} onValueChange={setCategoryId}>
-            <SelectTrigger>
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.map(cat => (
-                <SelectItem key={cat.id} value={cat.id}>
-                  {cat.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+  {/* Description */}
+  <div className="space-y-1">
+    <label className="text-sm font-medium">
+      Title
+    </label>
+    <Input
+      value={title}
+      onChange={e => setTitle(e.target.value)}
+      placeholder='Optional title'
+      required
+    />
+  </div>
 
-          <Input
-            type="date"
-            value={date}
-            onChange={e => setDate(e.target.value)}
-            required
-          />
+  {/* Amount */}
+  <div className="space-y-1">
+    <label className="text-sm font-medium">
+      Amount
+    </label>
+    <Input
+      type="number"
+      step="0.01"
+      value={amount}
+      placeholder="0.00"
+      onChange={e => setAmount(e.target.value)}
+      required
+    />
+  </div>
 
-          <Button type="submit" disabled={loading}>
-            {loading ? "Saving…" : "Update"}
-          </Button>
-        </form>
+  
+
+  {/* Submit */}
+  <Button type="submit" disabled={loading}>
+    {loading ? "Saving…" : "Update"}
+  </Button>
+</form>
+
       </DialogContent>
     </Dialog>
   )

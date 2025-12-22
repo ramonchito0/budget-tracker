@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { addExpense } from "@/lib/expenses"
 import { getCategories } from "@/lib/categories"
 import { toast } from "sonner"
@@ -24,7 +23,6 @@ import {
 } from "@/components/ui/select"
 
 export default function AddTransactionDialog() {
-  const supabase = createClient()
 
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -42,9 +40,23 @@ export default function AddTransactionDialog() {
     setCategories(data.filter(c => c.type === selectedType))
   }
 
-  useEffect(() => {
-    if (open) loadCategories(type)
-  }, [open, type])
+useEffect(() => {
+  if (!open) return
+
+  async function init() {
+    await loadCategories(type)
+
+    const last = getLastCategory(type)
+
+    setCategoryId(
+      categories.some(c => c.id === last) ? last : ""
+    )
+  }
+
+  init()
+}, [open, type])
+
+
 
   /* ----------------------------------------
      Submit
@@ -64,6 +76,10 @@ export default function AddTransactionDialog() {
         type,
         category_id: categoryId || null,
       })
+
+      if (categoryId) {
+        setLastCategory(type, categoryId)
+      }
 
       toast.success("Transaction added")
       setOpen(false)
@@ -89,6 +105,20 @@ export default function AddTransactionDialog() {
         </DialogHeader>
 
 <form onSubmit={handleSubmit} className="space-y-4">
+
+  {/* Date */}
+  <div className="space-y-1">
+    <label className="text-sm font-medium">
+      Date
+    </label>
+    <Input
+      type="date"
+      value={date}
+      onChange={e => setDate(e.target.value)}
+      required
+    />
+  </div>
+
   {/* Type */}
   <div className="space-y-1">
     <label className="text-sm font-medium">
@@ -101,6 +131,30 @@ export default function AddTransactionDialog() {
       <SelectContent>
         <SelectItem value="expense">Expense</SelectItem>
         <SelectItem value="income">Income</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+
+  {/* Category */}
+  <div className="space-y-1">
+    <label className="text-sm font-medium">
+      Category
+    </label>
+    <Select value={categoryId} onValueChange={setCategoryId}>
+      <SelectTrigger>
+        <SelectValue placeholder="Select category" />
+      </SelectTrigger>
+      <SelectContent>
+        {!categories.length && (
+          <div className="px-3 py-2 text-sm text-muted-foreground">
+            No categories available
+          </div>
+        )}
+        {categories.map(cat => (
+          <SelectItem key={cat.id} value={cat.id}>
+            {cat.name}
+          </SelectItem>
+        ))}
       </SelectContent>
     </Select>
   </div>
@@ -132,42 +186,6 @@ export default function AddTransactionDialog() {
     />
   </div>
 
-  {/* Category */}
-  <div className="space-y-1">
-    <label className="text-sm font-medium">
-      Category
-    </label>
-    <Select value={categoryId} onValueChange={setCategoryId}>
-      <SelectTrigger>
-        <SelectValue placeholder="Select category" />
-      </SelectTrigger>
-      <SelectContent>
-        {!categories.length && (
-          <div className="px-3 py-2 text-sm text-muted-foreground">
-            No categories available
-          </div>
-        )}
-        {categories.map(cat => (
-          <SelectItem key={cat.id} value={cat.id}>
-            {cat.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  </div>
-
-  {/* Date */}
-  <div className="space-y-1">
-    <label className="text-sm font-medium">
-      Date
-    </label>
-    <Input
-      type="date"
-      value={date}
-      onChange={e => setDate(e.target.value)}
-      required
-    />
-  </div>
 
   {/* Submit */}
   <Button type="submit" disabled={loading}>
@@ -182,4 +200,24 @@ export default function AddTransactionDialog() {
 
 function today() {
   return new Date().toISOString().split("T")[0]
+}
+
+
+const STORAGE_KEY = "last-category-by-type"
+
+function getLastCategory(type) {
+  try {
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}")
+    return data[type] || ""
+  } catch {
+    return ""
+  }
+}
+
+function setLastCategory(type, categoryId) {
+  try {
+    const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}")
+    data[type] = categoryId
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  } catch {}
 }
