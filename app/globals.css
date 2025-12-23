@@ -121,3 +121,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* disable close button when loading */
+[data-loading="true"] [type="button"] {
+  display: none;
+}

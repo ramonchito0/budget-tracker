@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { TrendingDown, TrendingUp } from "lucide-react"
+import { formatTime } from "@/lib/date-time"
 
 const MAX_ITEMS = 10
 
@@ -155,15 +156,4 @@ function todayEnd() {
   const d = new Date()
   d.setHours(23, 59, 59, 999)
   return d.toISOString()
-}
-
-
-function formatTime(dateString) {
-  const date = new Date(dateString)
-
-  return date.toLocaleTimeString("en-PH", {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-  })
 }

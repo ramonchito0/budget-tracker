@@ -1,7 +1,6 @@
 "use client"
 
 import { useEffect, useState, useTransition } from "react"
-import { Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { getCategories } from "@/lib/categories"
 import { getExpenses, deleteExpense } from "@/lib/expenses"
@@ -33,6 +32,7 @@ import {
 import { formatPeso } from "@/lib/currency"
 
 import { toast } from "sonner"
+import { formatTime } from "@/lib/date-time"
 
 const PAGE_SIZE = 20
 
@@ -110,6 +110,12 @@ export default function TransactionsTable() {
     0
   )
 
+const filteredCategories =
+  type === "all"
+    ? []
+    : categories.filter(cat => cat.type === type)
+
+
   /* ----------------------------------------
      Pagination (AFTER filters)
   ---------------------------------------- */
@@ -120,7 +126,8 @@ export default function TransactionsTable() {
   useEffect(() => {
     setPage(1)
     setSelected([])
-  }, [type, categoryId])
+    setCategoryId("all")
+  }, [type])
 
   /* ----------------------------------------
      Selection helpers
@@ -195,7 +202,6 @@ async function handleBulkDelete() {
 <div className="flex flex-wrap items-center justify-between gap-4">
   {/* Left: Title + Filters */}
   <div className="space-y-2">
-
     <div className="flex flex-wrap gap-3">
       <Select value={type} onValueChange={setType}>
         <SelectTrigger className="w-[160px]">
@@ -208,19 +214,32 @@ async function handleBulkDelete() {
         </SelectContent>
       </Select>
 
-      <Select value={categoryId} onValueChange={setCategoryId}>
+      <Select
+        value={categoryId}
+        onValueChange={setCategoryId}
+        disabled={type === "all"}
+      >
         <SelectTrigger className="w-[200px]">
-          <SelectValue placeholder="Category" />
+          <SelectValue
+            placeholder={
+              type === "all"
+                ? "Select type first"
+                : "Category"
+            }
+          />
         </SelectTrigger>
+
         <SelectContent>
           <SelectItem value="all">All Categories</SelectItem>
-          {categories.map(cat => (
+
+          {filteredCategories.map(cat => (
             <SelectItem key={cat.id} value={cat.id}>
               {cat.name}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
+
     </div>
   </div>
 
@@ -311,7 +330,8 @@ async function handleBulkDelete() {
 
                 </TableCell>
                 <TableCell>
-                  {new Date(tx.spent_at).toLocaleDateString()}
+                  {new Date(tx.spent_at).toLocaleDateString()}<br/>
+                  <span className="text-xs text-muted-foreground">{formatTime(tx.created_at)}</span>
                 </TableCell>
                 <TableCell>{tx.title}</TableCell>
                 <TableCell>{tx.category?.name || "—"}</TableCell>
@@ -327,7 +347,7 @@ async function handleBulkDelete() {
                   </span>
                 </TableCell>
                 <TableCell className="text-right">
-                  ₱{Number(tx.amount).toFixed(2)}
+                  {formatPeso(tx.amount)}
                 </TableCell>
                 <TableCell className="text-right">
                   <DropdownMenu>
