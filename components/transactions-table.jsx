@@ -53,6 +53,10 @@ export default function TransactionsTable() {
   const [deleting, setDeleting] = useState(false)
   const [editing, setEditing] = useState(null)
 
+  const [fromDate, setFromDate] = useState("")
+  const [toDate, setToDate] = useState("")
+
+
   /* ----------------------------------------
      Load transactions
   ---------------------------------------- */
@@ -100,10 +104,31 @@ export default function TransactionsTable() {
      Filters
   ---------------------------------------- */
   const filtered = transactions.filter(tx => {
+    // Type filter
     if (type !== "all" && tx.type !== type) return false
-    if (categoryId !== "all" && tx.category_id !== categoryId) return false
+
+    // Category filter
+    if (categoryId !== "all" && tx.category_id !== categoryId)
+      return false
+
+    // Date filter (spent_at)
+    const spentAt = new Date(tx.spent_at)
+
+    if (fromDate) {
+      const from = new Date(fromDate)
+      if (spentAt < from) return false
+    }
+
+    if (toDate) {
+      const to = new Date(toDate)
+      // include entire day
+      to.setHours(23, 59, 59, 999)
+      if (spentAt > to) return false
+    }
+
     return true
   })
+
 
   const totalAmount = filtered.reduce(
     (sum, tx) => sum + Number(tx.amount || 0),
@@ -126,8 +151,7 @@ const filteredCategories =
   useEffect(() => {
     setPage(1)
     setSelected([])
-    setCategoryId("all")
-  }, [type])
+  }, [type, categoryId, fromDate, toDate])
 
   /* ----------------------------------------
      Selection helpers
@@ -202,45 +226,73 @@ async function handleBulkDelete() {
 <div className="flex flex-wrap items-center justify-between gap-4">
   {/* Left: Title + Filters */}
   <div className="space-y-2">
-    <div className="flex flex-wrap gap-3">
-      <Select value={type} onValueChange={setType}>
-        <SelectTrigger className="w-[160px]">
-          <SelectValue placeholder="Type" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All</SelectItem>
-          <SelectItem value="income">Income</SelectItem>
-          <SelectItem value="expense">Expense</SelectItem>
-        </SelectContent>
-      </Select>
+      <div className="flex flex-wrap gap-3">
+        {/* TYPE */}
+        <Select value={type} onValueChange={setType}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="income">Income</SelectItem>
+            <SelectItem value="expense">Expense</SelectItem>
+          </SelectContent>
+        </Select>
 
-      <Select
-        value={categoryId}
-        onValueChange={setCategoryId}
-        disabled={type === "all"}
-      >
-        <SelectTrigger className="w-[200px]">
-          <SelectValue
-            placeholder={
-              type === "all"
-                ? "Select type first"
-                : "Category"
-            }
-          />
-        </SelectTrigger>
+        {/* CATEGORY */}
+        <Select
+          value={categoryId}
+          onValueChange={setCategoryId}
+          disabled={type === "all"}
+        >
+          <SelectTrigger className="w-[200px]">
+            <SelectValue
+              placeholder={
+                type === "all"
+                  ? "Select type first"
+                  : "Category"
+              }
+            />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Categories</SelectItem>
+            {filteredCategories.map(cat => (
+              <SelectItem key={cat.id} value={cat.id}>
+                {cat.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
 
-        <SelectContent>
-          <SelectItem value="all">All Categories</SelectItem>
+        {/* FROM DATE */}
+        <input
+          type="date"
+          value={fromDate}
+          onChange={e => setFromDate(e.target.value)}
+          className="h-10 rounded-md border px-3 text-sm"
+        />
 
-          {filteredCategories.map(cat => (
-            <SelectItem key={cat.id} value={cat.id}>
-              {cat.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-    </div>
+        {/* TO DATE */}
+        <input
+          type="date"
+          value={toDate}
+          onChange={e => setToDate(e.target.value)}
+          className="h-10 rounded-md border px-3 text-sm"
+        />
+        
+        {(fromDate || toDate) && (
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              setFromDate("")
+              setToDate("")
+            }}
+          >
+            Clear dates
+          </Button>
+        )}
+      </div>
   </div>
 
   {/* Right: Total */}
