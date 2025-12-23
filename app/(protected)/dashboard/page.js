@@ -1,9 +1,13 @@
 import AddTransactionDialog from "@/components/add-transaction-dialog"
 import RecentTransactions from "@/components/dashboard/recent-transactions"
+import MonthlyTrendsChart from "@/components/dashboard/monthly-trends-chart"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 import { formatPeso } from "@/lib/currency"
-import { createClient } from "@/lib/supabase/client"
+import { getMonthlyTrends } from "@/lib/dashboard/monthly-trends"
+import { createClient } from "@/lib/supabase/server"
+import SpendingByCategoryChart from "@/components/dashboard/spending-by-category-chart"
+import { getSpendingByCategoryThisMonth } from "@/lib/dashboard/spending-by-category"
 
 export default async function DashboardPage() {
   // 🔧 temporary static values (we’ll replace with real data)
@@ -15,7 +19,26 @@ export default async function DashboardPage() {
   const supabase = await createClient()
   const {
     data: { user },
-  } = await supabase.auth.getUser()
+  } = await supabase.auth.getUser();
+
+const { data: expenses = [] } = await supabase
+  .from("expenses")
+  .select(`
+    amount,
+    type,
+    spent_at,
+    category:categories (
+      name
+    )
+  `)
+  .eq("user_id", user.id)
+  .order("spent_at", { ascending: true })
+
+
+  const monthlyTrends = getMonthlyTrends(expenses || [])
+  const spendingByCategory = getSpendingByCategoryThisMonth(expenses || [])
+
+
 
   return (
     <div className="space-y-6">
@@ -118,9 +141,8 @@ export default async function DashboardPage() {
                   Your expense breakdown for this month
                 </p>
               </CardHeader>
-              <CardContent className="flex items-center justify-center h-[320px] text-muted-foreground">
-                {/* Chart placeholder */}
-                Chart goes here
+              <CardContent>
+                <SpendingByCategoryChart data={spendingByCategory} />
               </CardContent>
             </Card>
 
@@ -131,9 +153,8 @@ export default async function DashboardPage() {
                   Income vs Expenses over time
                 </p>
               </CardHeader>
-              <CardContent className="flex items-center justify-center h-[320px] text-muted-foreground">
-                {/* Chart placeholder */}
-                Chart goes here
+              <CardContent className="h-[320px]">
+                <MonthlyTrendsChart data={monthlyTrends} />
               </CardContent>
             </Card>
           </div>
