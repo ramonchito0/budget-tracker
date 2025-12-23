@@ -55,6 +55,7 @@ export default function TransactionsTable() {
 
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
+  const [dateFilter, setDateFilter] = useState("all")
 
 
   /* ----------------------------------------
@@ -104,30 +105,36 @@ export default function TransactionsTable() {
      Filters
   ---------------------------------------- */
   const filtered = transactions.filter(tx => {
-    // Type filter
+    // Type
     if (type !== "all" && tx.type !== type) return false
 
-    // Category filter
-    if (categoryId !== "all" && tx.category_id !== categoryId)
-      return false
+    // Category
+    if (categoryId !== "all" && tx.category_id !== categoryId) return false
 
-    // Date filter (spent_at)
-    const spentAt = new Date(tx.spent_at)
+    // Preset date filters
+    if (dateFilter === "today" && !isToday(tx.spent_at)) return false
+    if (dateFilter === "week" && !isThisWeek(tx.spent_at)) return false
+    if (dateFilter === "month" && !isThisMonth(tx.spent_at)) return false
 
-    if (fromDate) {
-      const from = new Date(fromDate)
-      if (spentAt < from) return false
-    }
+    // Manual date range ONLY when preset = all
+    if (dateFilter === "all") {
+      const spentAt = new Date(tx.spent_at)
 
-    if (toDate) {
-      const to = new Date(toDate)
-      // include entire day
-      to.setHours(23, 59, 59, 999)
-      if (spentAt > to) return false
+      if (fromDate) {
+        const from = new Date(fromDate)
+        if (spentAt < from) return false
+      }
+
+      if (toDate) {
+        const to = new Date(toDate)
+        to.setHours(23, 59, 59, 999)
+        if (spentAt > to) return false
+      }
     }
 
     return true
   })
+
 
 
   const totalAmount = filtered.reduce(
@@ -151,7 +158,7 @@ const filteredCategories =
   useEffect(() => {
     setPage(1)
     setSelected([])
-  }, [type, categoryId, fromDate, toDate])
+  }, [type, categoryId, dateFilter, fromDate, toDate])
 
   /* ----------------------------------------
      Selection helpers
@@ -220,6 +227,43 @@ async function handleBulkDelete() {
   }
 }
 
+function isToday(date) {
+  const d = new Date(date)
+  const t = new Date()
+
+  return (
+    d.getFullYear() === t.getFullYear() &&
+    d.getMonth() === t.getMonth() &&
+    d.getDate() === t.getDate()
+  )
+}
+
+function isThisWeek(date) {
+  const d = new Date(date)
+  const t = new Date()
+
+  const start = new Date(t)
+  start.setDate(t.getDate() - t.getDay())
+  start.setHours(0, 0, 0, 0)
+
+  const end = new Date(start)
+  end.setDate(start.getDate() + 6)
+  end.setHours(23, 59, 59, 999)
+
+  return d >= start && d <= end
+}
+
+function isThisMonth(date) {
+  const d = new Date(date)
+  const t = new Date()
+
+  return (
+    d.getFullYear() === t.getFullYear() &&
+    d.getMonth() === t.getMonth()
+  )
+}
+
+
 
   return (
     <div className="space-y-4">
@@ -264,11 +308,33 @@ async function handleBulkDelete() {
           </SelectContent>
         </Select>
 
+<Select
+  value={dateFilter}
+  onValueChange={value => {
+    setDateFilter(value)
+    setFromDate("")
+    setToDate("")
+  }}
+>
+
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="Date" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Dates</SelectItem>
+            <SelectItem value="today">Today</SelectItem>
+            <SelectItem value="week">This Week</SelectItem>
+            <SelectItem value="month">This Month</SelectItem>
+          </SelectContent>
+        </Select>
+
+
         {/* FROM DATE */}
         <input
           type="date"
           value={fromDate}
           onChange={e => setFromDate(e.target.value)}
+          disabled={dateFilter !== "all"}
           className="h-10 rounded-md border px-3 text-sm"
         />
 
@@ -277,6 +343,7 @@ async function handleBulkDelete() {
           type="date"
           value={toDate}
           onChange={e => setToDate(e.target.value)}
+          disabled={dateFilter !== "all"}
           className="h-10 rounded-md border px-3 text-sm"
         />
         
