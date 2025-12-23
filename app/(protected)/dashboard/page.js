@@ -67,7 +67,7 @@ const { data: expenses = [] } = await supabase
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
@@ -75,7 +75,7 @@ const { data: expenses = [] } = await supabase
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-lg xl:text-2xl font-bold text-green-600">
               {formatPeso(savings.balance)}
             </div>
 
@@ -100,7 +100,7 @@ const { data: expenses = [] } = await supabase
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">
+            <div className="text-lg xl:text-2xl font-bold text-green-600">
               {formatPeso(incomeKPI.total)}
             </div>
 
@@ -125,7 +125,7 @@ const { data: expenses = [] } = await supabase
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">
+            <div className="text-lg xl:text-2xl font-bold text-red-600">
               {formatPeso(expenseKPI.total)}
             </div>
 
@@ -150,7 +150,7 @@ const { data: expenses = [] } = await supabase
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-lg xl:text-2xl font-bold">
               {savings.savingsRate === null ? (
                 "—"
               ) : (
@@ -175,7 +175,7 @@ const { data: expenses = [] } = await supabase
 
         {/* Overview */}
         <TabsContent value="overview">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 lg:grid-cols-2">
             <Card>
               <CardHeader>
                 <CardTitle>Spending by Category</CardTitle>

@@ -363,7 +363,7 @@ function isThisMonth(date) {
   </div>
 
   {/* Right: Total */}
-  <div className="text-right">
+  <div className="2xl:text-right">
     <p className="text-sm text-muted-foreground">
       Total
     </p>
@@ -415,9 +415,9 @@ function isThisMonth(date) {
 
               </TableHead>
               <TableHead>Date</TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Category</TableHead>
-              <TableHead>Type</TableHead>
+              <TableHead className="hidden md:block">Title</TableHead>
+              <TableHead className="hidden md:block">Category</TableHead>
+              <TableHead className="hidden md:block">Type</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               <TableHead />
             </TableRow>
@@ -452,9 +452,9 @@ function isThisMonth(date) {
                   {new Date(tx.spent_at).toLocaleDateString()}<br/>
                   <span className="text-xs text-muted-foreground">{formatTime(tx.created_at)}</span>
                 </TableCell>
-                <TableCell>{tx.title}</TableCell>
-                <TableCell>{tx.category?.name || "—"}</TableCell>
-                <TableCell>
+                <TableCell  className="hidden md:block">{tx.title}</TableCell>
+                <TableCell className="hidden md:block">{tx.category?.name || "—"}</TableCell>
+                <TableCell className="hidden md:block">
                   <span
                     className={
                       tx.type === "income"

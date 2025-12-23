@@ -15,7 +15,7 @@ export default function TransactionsPage() {
             </p>
         </div>
 
-        <AddTransactionDialog />
+        <div className="hidden md:block"><AddTransactionDialog /></div>
         </div>
 
 

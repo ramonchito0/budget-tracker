@@ -21,6 +21,7 @@ import {
   SelectContent,
   SelectItem,
 } from "@/components/ui/select"
+import { Plus } from "lucide-react"
 
 export default function AddTransactionDialog() {
 
@@ -96,7 +97,7 @@ useEffect(() => {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>Add Transaction</Button>
+        <Button> <Plus className="h-4 w-4 lg:hidden" />Add <span className="hidden lg:inline">Transaction</span></Button>
       </DialogTrigger>
 
       <DialogContent>
