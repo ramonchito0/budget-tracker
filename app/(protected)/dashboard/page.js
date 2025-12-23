@@ -8,6 +8,8 @@ import { getMonthlyTrends } from "@/lib/dashboard/monthly-trends"
 import { createClient } from "@/lib/supabase/server"
 import SpendingByCategoryChart from "@/components/dashboard/spending-by-category-chart"
 import { getSpendingByCategoryThisMonth } from "@/lib/dashboard/spending-by-category"
+import { getMonthlyKPI } from "@/lib/dashboard/monthly-kpis"
+import { getSavingsMetrics } from "@/lib/dashboard/savings-metrics"
 
 export default async function DashboardPage() {
   // 🔧 temporary static values (we’ll replace with real data)
@@ -38,6 +40,13 @@ const { data: expenses = [] } = await supabase
   const monthlyTrends = getMonthlyTrends(expenses || [])
   const spendingByCategory = getSpendingByCategoryThisMonth(expenses || [])
 
+  const incomeKPI = getMonthlyKPI(expenses, "income")
+  const expenseKPI = getMonthlyKPI(expenses, "expense")
+
+  const savings = getSavingsMetrics(
+    incomeKPI.total,
+    expenseKPI.total
+)
 
 
   return (
@@ -60,68 +69,101 @@ const { data: expenses = [] } = await supabase
       {/* KPI Cards */}
       <div className="grid gap-4 md:grid-cols-4">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
               Total Balance
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatPeso(balance)}
+              {formatPeso(savings.balance)}
             </div>
+
             <p className="text-xs text-muted-foreground">
-              +{savingsRate}% from income
+              {savings.savingsRate === null ? (
+                "— from income"
+              ) : (
+                <>
+                  {savings.savingsRate > 0 ? "+" : ""}
+                  {savings.savingsRate.toFixed(1)}% from income
+                </>
+              )}
             </p>
           </CardContent>
         </Card>
 
+
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
               Total Income
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">
-              {formatPeso(totalIncome)}
+              {formatPeso(incomeKPI.total)}
             </div>
+
             <p className="text-xs text-muted-foreground">
-              +12% from last month
+              {incomeKPI.percentChange === null ? (
+                "— from last month"
+              ) : (
+                <>
+                  {incomeKPI.percentChange > 0 ? "+" : ""}
+                  {incomeKPI.percentChange.toFixed(1)}% from last month
+                </>
+              )}
             </p>
           </CardContent>
         </Card>
 
+
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
               Total Expenses
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-red-600">
-              {formatPeso(totalExpenses)}
+              {formatPeso(expenseKPI.total)}
             </div>
+
             <p className="text-xs text-muted-foreground">
-              +8% from last month
+              {expenseKPI.percentChange === null ? (
+                "— from last month"
+              ) : (
+                <>
+                  {expenseKPI.percentChange > 0 ? "+" : ""}
+                  {expenseKPI.percentChange.toFixed(1)}% from last month
+                </>
+              )}
             </p>
           </CardContent>
         </Card>
 
+
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
               Savings Rate
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {savingsRate}%
+              {savings.savingsRate === null ? (
+                "—"
+              ) : (
+                `${savings.savingsRate.toFixed(1)}%`
+              )}
             </div>
-            <p className="text-xs text-muted-foreground">
+
+            {/* <p className="text-xs text-muted-foreground">
               Target: 20%
-            </p>
+            </p> */}
           </CardContent>
         </Card>
+
       </div>
 
       {/* Tabs */}
