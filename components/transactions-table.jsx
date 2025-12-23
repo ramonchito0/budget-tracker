@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useTransition } from "react"
+import { Trash2 } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { getCategories } from "@/lib/categories"
 import { getExpenses, deleteExpense } from "@/lib/expenses"
@@ -15,6 +16,7 @@ import {
   TableCell,
 } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
   SelectTrigger,
@@ -28,6 +30,11 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
+import { formatPeso } from "@/lib/currency"
+
+import { toast } from "sonner"
+
+const PAGE_SIZE = 20
 
 export default function TransactionsTable() {
   const supabase = createClient()
@@ -35,9 +42,15 @@ export default function TransactionsTable() {
 
   const [transactions, setTransactions] = useState([])
   const [categories, setCategories] = useState([])
+
   const [type, setType] = useState("all")
   const [categoryId, setCategoryId] = useState("all")
+
+  const [page, setPage] = useState(1)
+  const [selected, setSelected] = useState([])
+
   const [deletingId, setDeletingId] = useState(null)
+  const [deleting, setDeleting] = useState(false)
   const [editing, setEditing] = useState(null)
 
   /* ----------------------------------------
@@ -92,8 +105,44 @@ export default function TransactionsTable() {
     return true
   })
 
+  const totalAmount = filtered.reduce(
+    (sum, tx) => sum + Number(tx.amount || 0),
+    0
+  )
+
   /* ----------------------------------------
-     Delete (optimistic)
+     Pagination (AFTER filters)
+  ---------------------------------------- */
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const start = (page - 1) * PAGE_SIZE
+  const paginated = filtered.slice(start, start + PAGE_SIZE)
+
+  useEffect(() => {
+    setPage(1)
+    setSelected([])
+  }, [type, categoryId])
+
+  /* ----------------------------------------
+     Selection helpers
+  ---------------------------------------- */
+  function toggleSelect(id) {
+    setSelected(prev =>
+      prev.includes(id)
+        ? prev.filter(x => x !== id)
+        : [...prev, id]
+    )
+  }
+
+  function toggleSelectAll() {
+    if (selected.length === paginated.length) {
+      setSelected([])
+    } else {
+      setSelected(paginated.map(tx => tx.id))
+    }
+  }
+
+  /* ----------------------------------------
+     Single delete (optimistic)
   ---------------------------------------- */
   async function handleDelete(id) {
     setDeletingId(id)
@@ -106,41 +155,127 @@ export default function TransactionsTable() {
     }
   }
 
+  /* ----------------------------------------
+     Bulk delete
+  ---------------------------------------- */
+async function handleBulkDelete() {
+  if (!selected.length) return
+
+  setDeleting(true)
+
+  try {
+    const { error } = await supabase
+      .from("expenses")
+      .delete()
+      .in("id", selected)
+
+    if (error) throw error
+
+    // Optimistic UI update
+    setTransactions(prev =>
+      prev.filter(tx => !selected.includes(tx.id))
+    )
+
+    toast.success(
+      `${selected.length} transaction${selected.length > 1 ? "s" : ""} deleted`
+    )
+
+    setSelected([])
+  } catch (err) {
+    console.error(err)
+    toast.error("Failed to delete transactions")
+  } finally {
+    setDeleting(false)
+  }
+}
+
+
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3">
-        <Select value={type} onValueChange={setType}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="income">Income</SelectItem>
-            <SelectItem value="expense">Expense</SelectItem>
-          </SelectContent>
-        </Select>
+<div className="flex flex-wrap items-center justify-between gap-4">
+  {/* Left: Title + Filters */}
+  <div className="space-y-2">
 
-        <Select value={categoryId} onValueChange={setCategoryId}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {categories.map(cat => (
-              <SelectItem key={cat.id} value={cat.id}>
-                {cat.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+    <div className="flex flex-wrap gap-3">
+      <Select value={type} onValueChange={setType}>
+        <SelectTrigger className="w-[160px]">
+          <SelectValue placeholder="Type" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All</SelectItem>
+          <SelectItem value="income">Income</SelectItem>
+          <SelectItem value="expense">Expense</SelectItem>
+        </SelectContent>
+      </Select>
+
+      <Select value={categoryId} onValueChange={setCategoryId}>
+        <SelectTrigger className="w-[200px]">
+          <SelectValue placeholder="Category" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">All Categories</SelectItem>
+          {categories.map(cat => (
+            <SelectItem key={cat.id} value={cat.id}>
+              {cat.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  </div>
+
+  {/* Right: Total */}
+  <div className="text-right">
+    <p className="text-sm text-muted-foreground">
+      Total
+    </p>
+    <p className="text-xl font-semibold">
+      {formatPeso(totalAmount)}
+    </p>
+  </div>
+</div>
+
+
+      {/* Bulk actions */}
+      {selected.length > 0 && (
+        <div className="flex items-center gap-2">
+          <Button
+            className="bg-red-600 text-white hover:bg-red-700"
+            disabled={deleting}
+            onClick={handleBulkDelete}
+          >
+            {deleting ? "Deleting…" : `Delete (${selected.length})`}
+          </Button>
+
+
+        <Button
+          variant="outline"
+          disabled={deleting}
+          onClick={() => setSelected([])}
+        >
+          Cancel
+        </Button>
+
+        </div>
+      )}
+
 
       {/* Table */}
       <div className="rounded border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+<Checkbox
+  disabled={deleting}
+  checked={
+    paginated.length > 0 &&
+    selected.length === paginated.length
+  }
+  onCheckedChange={toggleSelectAll}
+/>
+
+              </TableHead>
               <TableHead>Date</TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Category</TableHead>
@@ -151,10 +286,10 @@ export default function TransactionsTable() {
           </TableHeader>
 
           <TableBody>
-            {!filtered.length && (
+            {!paginated.length && (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   className="py-8 text-center text-muted-foreground"
                 >
                   No transactions found
@@ -162,12 +297,22 @@ export default function TransactionsTable() {
               </TableRow>
             )}
 
-            {filtered.map(tx => (
+            {paginated.map(tx => (
               <TableRow
                 key={tx.id}
                 className={deletingId === tx.id ? "opacity-50" : ""}
               >
-                <TableCell>{tx.spent_at}</TableCell>
+                <TableCell>
+<Checkbox
+  disabled={deleting}
+  checked={selected.includes(tx.id)}
+  onCheckedChange={() => toggleSelect(tx.id)}
+/>
+
+                </TableCell>
+                <TableCell>
+                  {new Date(tx.spent_at).toLocaleDateString()}
+                </TableCell>
                 <TableCell>{tx.title}</TableCell>
                 <TableCell>{tx.category?.name || "—"}</TableCell>
                 <TableCell>
@@ -187,42 +332,63 @@ export default function TransactionsTable() {
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        disabled={deletingId === tx.id}
-                      >
+                      <Button variant="ghost" size="icon">
                         •••
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                    <DropdownMenuItem onSelect={() => setEditing(tx)}>
+                      <DropdownMenuItem onSelect={() => setEditing(tx)}>
                         Edit
-                    </DropdownMenuItem>
-
-                    <DropdownMenuItem
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
                         className="text-red-600"
                         onSelect={() => handleDelete(tx.id)}
-                    >
+                      >
                         Delete
-                    </DropdownMenuItem>
+                      </DropdownMenuItem>
                     </DropdownMenuContent>
-
                   </DropdownMenu>
                 </TableCell>
               </TableRow>
             ))}
           </TableBody>
         </Table>
-
-        {editing && (
-        <EditTransactionDialog
-            transaction={editing}
-            open={!!editing}
-            onOpenChange={() => setEditing(null)}
-        />
-        )}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-between items-center">
+          <span className="text-sm text-muted-foreground">
+            Page {page} of {totalPages}
+          </span>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page === 1}
+              onClick={() => setPage(p => p - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={page === totalPages}
+              onClick={() => setPage(p => p + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {editing && (
+        <EditTransactionDialog
+          transaction={editing}
+          open={!!editing}
+          onOpenChange={() => setEditing(null)}
+        />
+      )}
     </div>
   )
 }
