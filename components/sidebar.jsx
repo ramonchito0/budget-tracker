@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { LayoutDashboard, Tags, CreditCard } from "lucide-react"
+import { LayoutDashboard, Tags, CreditCard, ArrowLeftRight } from "lucide-react"
 import LogoutButton from "./logout-button"
 
 export default function SidebarContent({ onNavigate }) {
@@ -43,6 +43,7 @@ export default function SidebarContent({ onNavigate }) {
           onClick={onNavigate}
           className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm hover:bg-muted"
         >
+          <ArrowLeftRight size={18} />
           Import / Export
         </Link>
       </nav>

@@ -30,7 +30,7 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
 import { formatPeso } from "@/lib/currency"
-import { formatTime } from "@/lib/date-time"
+import { formatShortDate, formatTime } from "@/lib/date-time"
 import { toast } from "sonner"
 import { MoreHorizontal, Plus, Minus } from "lucide-react"
 
@@ -57,12 +57,18 @@ export default function TransactionsTable() {
   const [toDate, setToDate] = useState("")
   const [dateFilter, setDateFilter] = useState("all")
 
+
   /* ----------------------------------------
      Load data
   ---------------------------------------- */
   async function load() {
-    const data = await getExpenses()
-    setTransactions(data || [])
+      try {
+        const data = await getExpenses()
+        setTransactions(data || [])
+      } catch (error) {
+        console.error(error)
+        toast.error("Failed to load transactions")
+      }
   }
 
   /* ----------------------------------------
@@ -80,7 +86,9 @@ export default function TransactionsTable() {
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "expenses" },
-          () => startTransition(load)
+          () => {
+              startTransition(load)
+          }
         )
         .subscribe()
     }
@@ -192,6 +200,10 @@ export default function TransactionsTable() {
 
     try {
       await deleteExpense(id)
+      toast.success("Transaction deleted")
+    } catch (error) {
+      console.error(error)
+      toast.error("Failed to delete transaction")
     } finally {
       setDeletingId(null)
     }
@@ -327,19 +339,25 @@ export default function TransactionsTable() {
 
         {/* Totals */}
         <div className="flex gap-6">
-          <div>
-            <p className="text-sm text-muted-foreground">Income</p>
-            <p className="text-lg font-semibold text-green-600">
-              {formatPeso(totalIncome)}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Expenses</p>
-            <p className="text-lg font-semibold text-red-600">
-              {formatPeso(totalExpense)}
-            </p>
-          </div>
+          {(type === "all" || type === "income") && (
+            <div>
+              <p className="text-sm text-muted-foreground">Income</p>
+              <p className="text-lg font-semibold text-green-600">
+                {formatPeso(totalIncome)}
+              </p>
+            </div>
+          )}
+
+          {(type === "all" || type === "expense") && (
+            <div>
+              <p className="text-sm text-muted-foreground">Expenses</p>
+              <p className="text-lg font-semibold text-red-600">
+                {formatPeso(totalExpense)}
+              </p>
+            </div>
+          )}
         </div>
+
       </div>
 
       {/* Bulk actions */}
@@ -403,9 +421,8 @@ export default function TransactionsTable() {
 
                 <TableCell>
                   <p className="font-medium">{tx.title}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {tx.category?.name} •{" "}
-                    {new Date(tx.spent_at).toLocaleDateString()}
+                  <p className="text-[10px] md:text-xs text-muted-foreground">
+                    {tx.category?.name} • {formatShortDate(tx.spent_at)}, {formatTime(tx.created_at)}
                   </p>
                 </TableCell>
 
