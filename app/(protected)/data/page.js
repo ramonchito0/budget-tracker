@@ -28,12 +28,6 @@ export default function DataPage() {
 
           <div className="flex flex-wrap gap-3">
             <ExportTransactionsButton/>
-            <Button variant="outline">
-              Export Categories (CSV)
-            </Button>
-            <Button variant="outline">
-              Export All (JSON)
-            </Button>
           </div>
         </CardContent>
       </Card>
