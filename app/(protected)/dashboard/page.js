@@ -63,11 +63,11 @@ const { data: expenses = [] } = await supabase
         </div>
 
         {/* Client component */}
-        <AddTransactionDialog />
+        <div className="hidden md:block"><AddTransactionDialog /></div>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">

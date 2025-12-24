@@ -30,9 +30,9 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu"
 import { formatPeso } from "@/lib/currency"
-
-import { toast } from "sonner"
 import { formatTime } from "@/lib/date-time"
+import { toast } from "sonner"
+import { MoreHorizontal, Plus, Minus } from "lucide-react"
 
 const PAGE_SIZE = 20
 
@@ -57,39 +57,30 @@ export default function TransactionsTable() {
   const [toDate, setToDate] = useState("")
   const [dateFilter, setDateFilter] = useState("all")
 
-
   /* ----------------------------------------
-     Load transactions
+     Load data
   ---------------------------------------- */
   async function load() {
     const data = await getExpenses()
-    setTransactions(data)
+    setTransactions(data || [])
   }
 
   /* ----------------------------------------
-     Initial load + realtime
+     Init + realtime
   ---------------------------------------- */
   useEffect(() => {
     let channel
 
     async function init() {
-      const cats = await getCategories()
-      setCategories(cats)
-
+      setCategories(await getCategories())
       await load()
 
       channel = supabase
         .channel("transactions-realtime")
         .on(
           "postgres_changes",
-          {
-            event: "*",
-            schema: "public",
-            table: "expenses",
-          },
-          () => {
-            startTransition(load)
-          }
+          { event: "*", schema: "public", table: "expenses" },
+          () => startTransition(load)
         )
         .subscribe()
     }
@@ -102,29 +93,36 @@ export default function TransactionsTable() {
   }, [])
 
   /* ----------------------------------------
+     Reset category when type changes
+  ---------------------------------------- */
+  useEffect(() => {
+    setCategoryId("all")
+  }, [type])
+
+  /* ----------------------------------------
      Filters
   ---------------------------------------- */
   const filtered = transactions.filter(tx => {
     // Type
     if (type !== "all" && tx.type !== type) return false
 
-    // Category
-    if (categoryId !== "all" && tx.category_id !== categoryId) return false
+    // Category (FIXED string vs number issue)
+    if (
+      categoryId !== "all" &&
+      String(tx.category_id) !== String(categoryId)
+    )
+      return false
+
+    const spentAt = new Date(tx.spent_at)
 
     // Preset date filters
-    if (dateFilter === "today" && !isToday(tx.spent_at)) return false
-    if (dateFilter === "week" && !isThisWeek(tx.spent_at)) return false
-    if (dateFilter === "month" && !isThisMonth(tx.spent_at)) return false
+    if (dateFilter === "today" && !isToday(spentAt)) return false
+    if (dateFilter === "week" && !isThisWeek(spentAt)) return false
+    if (dateFilter === "month" && !isThisMonth(spentAt)) return false
 
-    // Manual date range ONLY when preset = all
+    // Manual range (only when preset = all)
     if (dateFilter === "all") {
-      const spentAt = new Date(tx.spent_at)
-
-      if (fromDate) {
-        const from = new Date(fromDate)
-        if (spentAt < from) return false
-      }
-
+      if (fromDate && spentAt < new Date(fromDate)) return false
       if (toDate) {
         const to = new Date(toDate)
         to.setHours(23, 59, 59, 999)
@@ -135,26 +133,36 @@ export default function TransactionsTable() {
     return true
   })
 
+  /* ----------------------------------------
+     Totals (BASED ON FILTERED)
+  ---------------------------------------- */
+  const totalIncome = filtered
+    .filter(tx => tx.type === "income")
+    .reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
 
+  const totalExpense = filtered
+    .filter(tx => tx.type === "expense")
+    .reduce((sum, tx) => sum + Number(tx.amount || 0), 0)
 
-  const totalAmount = filtered.reduce(
-    (sum, tx) => sum + Number(tx.amount || 0),
-    0
-  )
-
-const filteredCategories =
-  type === "all"
-    ? []
-    : categories.filter(cat => cat.type === type)
-
+  /* ----------------------------------------
+     Categories per type
+  ---------------------------------------- */
+  const filteredCategories =
+    type === "all" ? [] : categories.filter(cat => cat.type === type)
 
   /* ----------------------------------------
      Pagination (AFTER filters)
   ---------------------------------------- */
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const start = (page - 1) * PAGE_SIZE
   const paginated = filtered.slice(start, start + PAGE_SIZE)
 
+  // FIX: page overflow after filtering / deleting
+  useEffect(() => {
+    if (page > totalPages) setPage(1)
+  }, [filtered.length])
+
+  // Reset page & selection on filter change
   useEffect(() => {
     setPage(1)
     setSelected([])
@@ -165,22 +173,18 @@ const filteredCategories =
   ---------------------------------------- */
   function toggleSelect(id) {
     setSelected(prev =>
-      prev.includes(id)
-        ? prev.filter(x => x !== id)
-        : [...prev, id]
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
     )
   }
 
   function toggleSelectAll() {
-    if (selected.length === paginated.length) {
-      setSelected([])
-    } else {
-      setSelected(paginated.map(tx => tx.id))
-    }
+    setSelected(
+      selected.length === paginated.length ? [] : paginated.map(tx => tx.id)
+    )
   }
 
   /* ----------------------------------------
-     Single delete (optimistic)
+     Single delete
   ---------------------------------------- */
   async function handleDelete(id) {
     setDeletingId(id)
@@ -196,183 +200,147 @@ const filteredCategories =
   /* ----------------------------------------
      Bulk delete
   ---------------------------------------- */
-async function handleBulkDelete() {
-  if (!selected.length) return
+  async function handleBulkDelete() {
+    if (!selected.length) return
+    setDeleting(true)
 
-  setDeleting(true)
+    try {
+      await supabase.from("expenses").delete().in("id", selected)
 
-  try {
-    const { error } = await supabase
-      .from("expenses")
-      .delete()
-      .in("id", selected)
+      setTransactions(prev =>
+        prev.filter(tx => !selected.includes(tx.id))
+      )
 
-    if (error) throw error
-
-    // Optimistic UI update
-    setTransactions(prev =>
-      prev.filter(tx => !selected.includes(tx.id))
-    )
-
-    toast.success(
-      `${selected.length} transaction${selected.length > 1 ? "s" : ""} deleted`
-    )
-
-    setSelected([])
-  } catch (err) {
-    console.error(err)
-    toast.error("Failed to delete transactions")
-  } finally {
-    setDeleting(false)
+      toast.success(`${selected.length} transaction(s) deleted`)
+      setSelected([])
+    } catch {
+      toast.error("Failed to delete transactions")
+    } finally {
+      setDeleting(false)
+    }
   }
-}
 
-function isToday(date) {
-  const d = new Date(date)
-  const t = new Date()
+  /* ----------------------------------------
+     Date helpers
+  ---------------------------------------- */
+  function isToday(d) {
+    const t = new Date()
+    return (
+      d.getFullYear() === t.getFullYear() &&
+      d.getMonth() === t.getMonth() &&
+      d.getDate() === t.getDate()
+    )
+  }
 
-  return (
-    d.getFullYear() === t.getFullYear() &&
-    d.getMonth() === t.getMonth() &&
-    d.getDate() === t.getDate()
-  )
-}
+  function isThisWeek(d) {
+    const t = new Date()
+    const start = new Date(t)
+    start.setDate(t.getDate() - t.getDay())
+    start.setHours(0, 0, 0, 0)
 
-function isThisWeek(date) {
-  const d = new Date(date)
-  const t = new Date()
+    const end = new Date(start)
+    end.setDate(start.getDate() + 6)
+    end.setHours(23, 59, 59, 999)
 
-  const start = new Date(t)
-  start.setDate(t.getDate() - t.getDay())
-  start.setHours(0, 0, 0, 0)
+    return d >= start && d <= end
+  }
 
-  const end = new Date(start)
-  end.setDate(start.getDate() + 6)
-  end.setHours(23, 59, 59, 999)
+  function isThisMonth(d) {
+    const t = new Date()
+    return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth()
+  }
 
-  return d >= start && d <= end
-}
-
-function isThisMonth(date) {
-  const d = new Date(date)
-  const t = new Date()
-
-  return (
-    d.getFullYear() === t.getFullYear() &&
-    d.getMonth() === t.getMonth()
-  )
-}
-
-
-
+  /* ----------------------------------------
+     Render
+  ---------------------------------------- */
   return (
     <div className="space-y-4">
-<div className="flex flex-wrap items-center justify-between gap-4">
-  {/* Left: Title + Filters */}
-  <div className="space-y-2">
-      <div className="flex flex-wrap gap-3">
-        {/* TYPE */}
-        <Select value={type} onValueChange={setType}>
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All</SelectItem>
-            <SelectItem value="income">Income</SelectItem>
-            <SelectItem value="expense">Expense</SelectItem>
-          </SelectContent>
-        </Select>
+      {/* Header */}
+      <div className="flex flex-wrap justify-between gap-4">
+        {/* Filters */}
+        <div className="flex flex-wrap gap-3">
+          <Select value={type} onValueChange={setType}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="income">Income</SelectItem>
+              <SelectItem value="expense">Expense</SelectItem>
+            </SelectContent>
+          </Select>
 
-        {/* CATEGORY */}
-        <Select
-          value={categoryId}
-          onValueChange={setCategoryId}
-          disabled={type === "all"}
-        >
-          <SelectTrigger className="w-[200px]">
-            <SelectValue
-              placeholder={
-                type === "all"
-                  ? "Select type first"
-                  : "Category"
-              }
-            />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {filteredCategories.map(cat => (
-              <SelectItem key={cat.id} value={cat.id}>
-                {cat.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <Select
+            value={categoryId}
+            onValueChange={setCategoryId}
+            disabled={type === "all"}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {filteredCategories.map(cat => (
+                <SelectItem key={cat.id} value={String(cat.id)}>
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-<Select
-  value={dateFilter}
-  onValueChange={value => {
-    setDateFilter(value)
-    setFromDate("")
-    setToDate("")
-  }}
->
-
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Date" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Dates</SelectItem>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="week">This Week</SelectItem>
-            <SelectItem value="month">This Month</SelectItem>
-          </SelectContent>
-        </Select>
-
-
-        {/* FROM DATE */}
-        <input
-          type="date"
-          value={fromDate}
-          onChange={e => setFromDate(e.target.value)}
-          disabled={dateFilter !== "all"}
-          className="h-10 rounded-md border px-3 text-sm"
-        />
-
-        {/* TO DATE */}
-        <input
-          type="date"
-          value={toDate}
-          onChange={e => setToDate(e.target.value)}
-          disabled={dateFilter !== "all"}
-          className="h-10 rounded-md border px-3 text-sm"
-        />
-        
-        {(fromDate || toDate) && (
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => {
+          <Select
+            value={dateFilter}
+            onValueChange={v => {
+              setDateFilter(v)
               setFromDate("")
               setToDate("")
             }}
           >
-            Clear dates
-          </Button>
-        )}
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Date" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Dates</SelectItem>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="week">This Week</SelectItem>
+              <SelectItem value="month">This Month</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {dateFilter === "all" && (
+            <>
+              <input
+                type="date"
+                value={fromDate}
+                onChange={e => setFromDate(e.target.value)}
+                className="h-10 rounded-md border px-3 text-sm"
+              />
+              <input
+                type="date"
+                value={toDate}
+                onChange={e => setToDate(e.target.value)}
+                className="h-10 rounded-md border px-3 text-sm"
+              />
+            </>
+          )}
+        </div>
+
+        {/* Totals */}
+        <div className="flex gap-6">
+          <div>
+            <p className="text-sm text-muted-foreground">Income</p>
+            <p className="text-lg font-semibold text-green-600">
+              {formatPeso(totalIncome)}
+            </p>
+          </div>
+          <div>
+            <p className="text-sm text-muted-foreground">Expenses</p>
+            <p className="text-lg font-semibold text-red-600">
+              {formatPeso(totalExpense)}
+            </p>
+          </div>
+        </div>
       </div>
-  </div>
-
-  {/* Right: Total */}
-  <div className="2xl:text-right">
-    <p className="text-sm text-muted-foreground">
-      Total
-    </p>
-    <p className="text-xl font-semibold">
-      {formatPeso(totalAmount)}
-    </p>
-  </div>
-</div>
-
 
       {/* Bulk actions */}
       {selected.length > 0 && (
@@ -385,39 +353,31 @@ function isThisMonth(date) {
             {deleting ? "Deleting…" : `Delete (${selected.length})`}
           </Button>
 
-
-        <Button
-          variant="outline"
-          disabled={deleting}
-          onClick={() => setSelected([])}
-        >
-          Cancel
-        </Button>
-
+          <Button
+            variant="outline"
+            disabled={deleting}
+            onClick={() => setSelected([])}
+          >
+            Cancel
+          </Button>
         </div>
       )}
-
-
+      
       {/* Table */}
       <div className="rounded border">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-10">
-<Checkbox
-  disabled={deleting}
-  checked={
-    paginated.length > 0 &&
-    selected.length === paginated.length
-  }
-  onCheckedChange={toggleSelectAll}
-/>
-
+                <Checkbox
+                  checked={
+                    paginated.length > 0 &&
+                    selected.length === paginated.length
+                  }
+                  onCheckedChange={toggleSelectAll}
+                />
               </TableHead>
-              <TableHead>Date</TableHead>
-              <TableHead className="hidden md:block">Title</TableHead>
-              <TableHead className="hidden md:block">Category</TableHead>
-              <TableHead className="hidden md:block">Type</TableHead>
+              <TableHead>Transaction</TableHead>
               <TableHead className="text-right">Amount</TableHead>
               <TableHead />
             </TableRow>
@@ -426,53 +386,51 @@ function isThisMonth(date) {
           <TableBody>
             {!paginated.length && (
               <TableRow>
-                <TableCell
-                  colSpan={7}
-                  className="py-8 text-center text-muted-foreground"
-                >
+                <TableCell colSpan={4} className="py-8 text-center">
                   No transactions found
                 </TableCell>
               </TableRow>
             )}
 
             {paginated.map(tx => (
-              <TableRow
-                key={tx.id}
-                className={deletingId === tx.id ? "opacity-50" : ""}
-              >
+              <TableRow key={tx.id}>
                 <TableCell>
-<Checkbox
-  disabled={deleting}
-  checked={selected.includes(tx.id)}
-  onCheckedChange={() => toggleSelect(tx.id)}
-/>
+                  <Checkbox
+                    checked={selected.includes(tx.id)}
+                    onCheckedChange={() => toggleSelect(tx.id)}
+                  />
+                </TableCell>
 
-                </TableCell>
                 <TableCell>
-                  {new Date(tx.spent_at).toLocaleDateString()}<br/>
-                  <span className="text-xs text-muted-foreground">{formatTime(tx.created_at)}</span>
+                  <p className="font-medium">{tx.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {tx.category?.name} •{" "}
+                    {new Date(tx.spent_at).toLocaleDateString()}
+                  </p>
                 </TableCell>
-                <TableCell  className="hidden md:block">{tx.title}</TableCell>
-                <TableCell className="hidden md:block">{tx.category?.name || "—"}</TableCell>
-                <TableCell className="hidden md:block">
-                  <span
-                    className={
-                      tx.type === "income"
-                        ? "text-green-600 font-medium"
-                        : "text-red-600"
-                    }
-                  >
-                    {tx.type === "income" ? "Income" : "Expense"}
-                  </span>
-                </TableCell>
+
                 <TableCell className="text-right">
-                  {formatPeso(tx.amount)}
+                  <div
+                    className={`flex justify-end items-center gap-1 font-medium ${
+                      tx.type === "income"
+                        ? "text-green-600"
+                        : "text-red-600"
+                    }`}
+                  >
+                    {tx.type === "income" ? (
+                      <Plus className="h-3 w-3" />
+                    ) : (
+                      <Minus className="h-3 w-3" />
+                    )}
+                    {formatPeso(tx.amount)}
+                  </div>
                 </TableCell>
+
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <Button variant="ghost" size="icon">
-                        •••
+                        <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
@@ -494,37 +452,10 @@ function isThisMonth(date) {
         </Table>
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="flex justify-between items-center">
-          <span className="text-sm text-muted-foreground">
-            Page {page} of {totalPages}
-          </span>
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={page === 1}
-              onClick={() => setPage(p => p - 1)}
-            >
-              Previous
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              disabled={page === totalPages}
-              onClick={() => setPage(p => p + 1)}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
-      )}
-
       {editing && (
         <EditTransactionDialog
           transaction={editing}
-          open={!!editing}
+          open
           onOpenChange={() => setEditing(null)}
         />
       )}

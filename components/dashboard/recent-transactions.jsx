@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
-import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { TrendingDown, TrendingUp } from "lucide-react"
 import { formatTime } from "@/lib/date-time"
+import Link from "next/link"
 
 const MAX_ITEMS = 10
 
@@ -20,36 +20,38 @@ export default function RecentTransactions() {
     load()
   }, [])
 
-  async function load() {
-    setLoading(true)
+async function load() {
+  setLoading(true)
 
-    const start = todayStart()
-    const end = todayEnd()
+  const start = todayStart()
+  const end = todayEnd()
 
-    const { data } = await supabase
-      .from("expenses")
-        .select(`
-            id,
-            title,
-            amount,
-            type,
-            created_at,
-            categories ( name )
-        `)
-        .order("created_at", { ascending: false })
-        .limit(MAX_ITEMS + 1)
+  const { data } = await supabase
+    .from("expenses")
+    .select(`
+      id,
+      title,
+      amount,
+      type,
+      created_at,
+      categories ( name )
+    `)
+    .gte("created_at", start)   // ✅ start of today
+    .lte("created_at", end)     // ✅ end of today
+    .order("created_at", { ascending: false })
+    .limit(MAX_ITEMS + 1)
 
-    if (!data) {
-      setItems([])
-      setHasMore(false)
-      setLoading(false)
-      return
-    }
-
-    setItems(data.slice(0, MAX_ITEMS))
-    setHasMore(data.length > MAX_ITEMS)
+  if (!data) {
+    setItems([])
+    setHasMore(false)
     setLoading(false)
+    return
   }
+
+  setItems(data.slice(0, MAX_ITEMS))
+  setHasMore(data.length > MAX_ITEMS)
+  setLoading(false)
+}
 
   if (loading) {
     return (
@@ -135,9 +137,9 @@ export default function RecentTransactions() {
       {/* Footer */}
       {hasMore && (
         <div className="border-t p-4 text-center">
-          <Button variant="ghost" size="sm">
+          <Link href="/transactions" variant="ghost" size="sm">
             View more
-          </Button>
+          </Link>
         </div>
       )}
     </div>
