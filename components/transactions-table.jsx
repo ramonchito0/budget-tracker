@@ -452,6 +452,36 @@ export default function TransactionsTable() {
         </Table>
       </div>
 
+    {/* Pagination */}
+    {totalPages > 1 && (
+      <div className="flex items-center justify-between">
+        <span className="text-sm text-muted-foreground">
+          Page {page} of {totalPages}
+        </span>
+
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === 1}
+            onClick={() => setPage(p => p - 1)}
+          >
+            Previous
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
+            disabled={page === totalPages}
+            onClick={() => setPage(p => p + 1)}
+          >
+            Next
+          </Button>
+        </div>
+      </div>
+    )}
+
+
       {editing && (
         <EditTransactionDialog
           transaction={editing}
