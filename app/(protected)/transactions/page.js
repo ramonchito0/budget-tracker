@@ -20,10 +20,10 @@ export default function TransactionsPage() {
 
 
       <Card>
-        <CardHeader>
+        <CardHeader className="px-4">
           <CardTitle>All Transactions</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="px-4 pt-0">
           <TransactionsTable />
         </CardContent>
       </Card>

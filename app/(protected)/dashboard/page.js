@@ -3,7 +3,7 @@ import RecentTransactions from "@/components/dashboard/recent-transactions"
 import MonthlyTrendsChart from "@/components/dashboard/monthly-trends-chart"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
-import { formatPeso } from "@/lib/currency"
+import { formatCompact, formatPeso, formatPesoCompact } from "@/lib/currency"
 import { getMonthlyTrends } from "@/lib/dashboard/monthly-trends"
 import { createClient } from "@/lib/supabase/server"
 import SpendingByCategoryChart from "@/components/dashboard/spending-by-category-chart"
@@ -67,7 +67,7 @@ const { data: expenses = [] } = await supabase
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-3 md:gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 md:gap-4 grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">
@@ -76,7 +76,7 @@ const { data: expenses = [] } = await supabase
           </CardHeader>
           <CardContent>
             <div className="text-lg xl:text-2xl font-bold text-green-600">
-              {formatPeso(savings.balance)}
+              {formatPesoCompact(savings.balance)}
             </div>
 
             <p className="text-xs text-muted-foreground">
@@ -101,7 +101,7 @@ const { data: expenses = [] } = await supabase
           </CardHeader>
           <CardContent>
             <div className="text-lg xl:text-2xl font-bold text-green-600">
-              {formatPeso(incomeKPI.total)}
+              {formatPesoCompact(incomeKPI.total)}
             </div>
 
             <p className="text-xs text-muted-foreground">
@@ -126,7 +126,7 @@ const { data: expenses = [] } = await supabase
           </CardHeader>
           <CardContent>
             <div className="text-lg xl:text-2xl font-bold text-red-600">
-              {formatPeso(expenseKPI.total)}
+              {formatPesoCompact(expenseKPI.total)}
             </div>
 
             <p className="text-xs text-muted-foreground">

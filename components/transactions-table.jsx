@@ -32,7 +32,18 @@ import {
 import { formatPeso } from "@/lib/currency"
 import { formatShortDate, formatTime } from "@/lib/date-time"
 import { toast } from "sonner"
-import { MoreHorizontal, Plus, Minus } from "lucide-react"
+import { MoreHorizontal, Plus, Minus, TrendingUp, TrendingDown } from "lucide-react"
+import { Toggle } from "./ui/toggle"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis
+} from "@/components/ui/pagination"
+
 
 const PAGE_SIZE = 20
 
@@ -262,6 +273,35 @@ export default function TransactionsTable() {
     return d.getFullYear() === t.getFullYear() && d.getMonth() === t.getMonth()
   }
 
+  function getPaginationPages(page, totalPages) {
+    const pages = []
+
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1)
+    }
+
+    pages.push(1)
+
+    if (page > 3) {
+      pages.push("ellipsis-left")
+    }
+
+    const start = Math.max(2, page - 1)
+    const end = Math.min(totalPages - 1, page + 1)
+
+    for (let i = start; i <= end; i++) {
+      pages.push(i)
+    }
+
+    if (page < totalPages - 2) {
+      pages.push("ellipsis-right")
+    }
+
+    pages.push(totalPages)
+
+    return pages
+  }
+
   /* ----------------------------------------
      Render
   ---------------------------------------- */
@@ -270,71 +310,103 @@ export default function TransactionsTable() {
       {/* Header */}
       <div className="flex flex-wrap justify-between gap-4">
         {/* Filters */}
-        <div className="flex flex-wrap gap-3">
-          <Select value={type} onValueChange={setType}>
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="income">Income</SelectItem>
-              <SelectItem value="expense">Expense</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2 p-1 rounded-md">
+                {/* INCOME */}
+                <Toggle
+                  pressed={type === "income"}
+                  onPressedChange={pressed => {
+                    setType(pressed ? "income" : "all")
+                  }}
+                  variant="outline"
+                  className="
+                    flex items-center gap-2 px-4 shadow-none
+                    data-[state=on]:bg-green-600
+                    data-[state=on]:text-white
+                  "
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  Income
+                </Toggle>
 
-          <Select
-            value={categoryId}
-            onValueChange={setCategoryId}
-            disabled={type === "all"}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Category" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Categories</SelectItem>
-              {filteredCategories.map(cat => (
-                <SelectItem key={cat.id} value={String(cat.id)}>
-                  {cat.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                {/* EXPENSE */}
+                <Toggle
+                  pressed={type === "expense"}
+                  onPressedChange={pressed => {
+                    setType(pressed ? "expense" : "all")
+                  }}
+                  variant="outline"
+                  className="
+                    flex items-center gap-2 px-4 shadow-none
+                    data-[state=on]:bg-red-600
+                    data-[state=on]:text-white
+                  "
+                >
+                  <TrendingDown className="h-4 w-4" />
+                  Expense
+                </Toggle>
+              </div>
 
-          <Select
-            value={dateFilter}
-            onValueChange={v => {
-              setDateFilter(v)
-              setFromDate("")
-              setToDate("")
-            }}
-          >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Date" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Dates</SelectItem>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="week">This Week</SelectItem>
-              <SelectItem value="month">This Month</SelectItem>
-            </SelectContent>
-          </Select>
 
-          {dateFilter === "all" && (
-            <>
-              <input
-                type="date"
-                value={fromDate}
-                onChange={e => setFromDate(e.target.value)}
-                className="h-10 rounded-md border px-3 text-sm"
-              />
-              <input
-                type="date"
-                value={toDate}
-                onChange={e => setToDate(e.target.value)}
-                className="h-10 rounded-md border px-3 text-sm"
-              />
-            </>
-          )}
+            <div className="flex flex-wrap gap-3">
+                    
+
+                    {type !== "all" && (
+                              <Select
+                                value={categoryId}
+                                onValueChange={setCategoryId}
+                                disabled={type === "all"}
+                              >
+                                <SelectTrigger className="w-[200px] shadow-none">
+                                  <SelectValue placeholder="Category" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="all">All Categories</SelectItem>
+                                  {filteredCategories.map(cat => (
+                                    <SelectItem key={cat.id} value={String(cat.id)}>
+                                      {cat.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                    )}
+
+                    <Select
+                      value={dateFilter}
+                      onValueChange={v => {
+                        setDateFilter(v)
+                        setFromDate("")
+                        setToDate("")
+                      }}
+                    >
+                      <SelectTrigger className="w-[160px] shadow-none">
+                        <SelectValue placeholder="Date" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Dates</SelectItem>
+                        <SelectItem value="today">Today</SelectItem>
+                        <SelectItem value="week">This Week</SelectItem>
+                        <SelectItem value="month">This Month</SelectItem>
+                      </SelectContent>
+                    </Select>
+
+                    {dateFilter === "all" && (
+                      <>
+                        <input
+                          type="date"
+                          value={fromDate}
+                          onChange={e => setFromDate(e.target.value)}
+                          className="h-10 rounded-md border px-3 text-sm"
+                        />
+                        <input
+                          type="date"
+                          value={toDate}
+                          onChange={e => setToDate(e.target.value)}
+                          className="h-10 rounded-md border px-3 text-sm"
+                        />
+                      </>
+                    )}
+            </div>
         </div>
 
         {/* Totals */}
@@ -386,18 +458,19 @@ export default function TransactionsTable() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-10">
+              <TableHead className="w-6 md:w-10">
                 <Checkbox
                   checked={
                     paginated.length > 0 &&
                     selected.length === paginated.length
                   }
                   onCheckedChange={toggleSelectAll}
+                  className="h-3 w-3 md:h-4 md:w-4"
                 />
               </TableHead>
               <TableHead>Transaction</TableHead>
               <TableHead className="text-right">Amount</TableHead>
-              <TableHead />
+              <TableHead className="w-8 md:w-16"/>
             </TableRow>
           </TableHeader>
 
@@ -416,6 +489,7 @@ export default function TransactionsTable() {
                   <Checkbox
                     checked={selected.includes(tx.id)}
                     onCheckedChange={() => toggleSelect(tx.id)}
+                    className="h-3 w-3 md:h-4 md:w-4"
                   />
                 </TableCell>
 
@@ -469,34 +543,71 @@ export default function TransactionsTable() {
         </Table>
       </div>
 
-    {/* Pagination */}
-    {totalPages > 1 && (
-      <div className="flex items-center justify-between">
-        <span className="text-sm text-muted-foreground">
-          Page {page} of {totalPages}
-        </span>
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between gap-4">
+          <span className="text-sm text-muted-foreground shrink-0">
+            Page {page} of {totalPages}
+          </span>
 
-        <div className="flex gap-2">
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page === 1}
-            onClick={() => setPage(p => p - 1)}
-          >
-            Previous
-          </Button>
+          <Pagination className="justify-end">
+            <PaginationContent>
+              {/* Previous */}
+              <PaginationItem>
+                <PaginationPrevious
+                  href="#"
+                  onClick={e => {
+                    e.preventDefault()
+                    if (page > 1) setPage(page - 1)
+                  }}
+                  className={page === 1 ? "pointer-events-none opacity-50" : ""}
+                />
+              </PaginationItem>
 
-          <Button
-            size="sm"
-            variant="outline"
-            disabled={page === totalPages}
-            onClick={() => setPage(p => p + 1)}
-          >
-            Next
-          </Button>
+              {/* Page numbers */}
+              {getPaginationPages(page, totalPages).map((item, index) => {
+                if (typeof item === "string") {
+                  return (
+                    <PaginationItem key={item + index}>
+                      <PaginationEllipsis />
+                    </PaginationItem>
+                  )
+                }
+
+                return (
+                  <PaginationItem key={item}>
+                    <PaginationLink
+                      href="#"
+                      isActive={page === item}
+                      onClick={e => {
+                        e.preventDefault()
+                        setPage(item)
+                      }}
+                    >
+                      {item}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              })}
+
+              {/* Next */}
+              <PaginationItem>
+                <PaginationNext
+                  href="#"
+                  onClick={e => {
+                    e.preventDefault()
+                    if (page < totalPages) setPage(page + 1)
+                  }}
+                  className={
+                    page === totalPages ? "pointer-events-none opacity-50" : ""
+                  }
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
-      </div>
-    )}
+      )}
+
 
 
       {editing && (
