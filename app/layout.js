@@ -5,8 +5,7 @@ import { Toaster } from "sonner"
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Budget Tracker",
-  description: "Next.js + Supabase Budget Tracker",
+  title: "RM Budget Tracker",
 };
 
 export default function RootLayout({ children }) {

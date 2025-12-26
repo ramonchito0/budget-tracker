@@ -6,8 +6,8 @@ export default function SidebarContent({ onNavigate }) {
   return (
     <>
       <div className="mb-8">
-        <h2 className="text-lg font-semibold">Budget Tracker</h2>
-        <p className="text-sm text-muted-foreground">Personal finance</p>
+        <h2 className="text-lg font-semibold">RM Budget Tracker</h2>
+        <p className="text-sm text-muted-foreground">Spend smarter, save better</p>
       </div>
 
       <nav className="space-y-1">

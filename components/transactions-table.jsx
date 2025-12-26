@@ -390,22 +390,38 @@ export default function TransactionsTable() {
                       </SelectContent>
                     </Select>
 
-                    {dateFilter === "all" && (
-                      <>
-                        <input
-                          type="date"
-                          value={fromDate}
-                          onChange={e => setFromDate(e.target.value)}
-                          className="h-10 rounded-md border px-3 text-sm"
-                        />
-                        <input
-                          type="date"
-                          value={toDate}
-                          onChange={e => setToDate(e.target.value)}
-                          className="h-10 rounded-md border px-3 text-sm"
-                        />
-                      </>
-                    )}
+                  {dateFilter === "all" && (
+                    <>
+                      <input
+                        type="date"
+                        value={fromDate}
+                        onChange={e => setFromDate(e.target.value)}
+                        className="h-10 rounded-md border px-3 text-sm"
+                      />
+
+                      <input
+                        type="date"
+                        value={toDate}
+                        onChange={e => setToDate(e.target.value)}
+                        className="h-10 rounded-md border px-3 text-sm"
+                      />
+
+                      {(fromDate || toDate) && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-10"
+                          onClick={() => {
+                            setFromDate("")
+                            setToDate("")
+                          }}
+                        >
+                          Clear dates
+                        </Button>
+                      )}
+                    </>
+                  )}
+
             </div>
         </div>
 
@@ -545,67 +561,115 @@ export default function TransactionsTable() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between gap-4">
-          <span className="text-sm text-muted-foreground shrink-0">
-            Page {page} of {totalPages}
-          </span>
+        <>
+            {/* MOBILE PAGINATION */}
+            <div className="flex justify-between items-center gap-2 md:hidden">
+              <span className="text-sm text-muted-foreground shrink-0">
+                Page {page} of {totalPages}
+              </span>
+              <div className="flex gap-2 items-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === 1}
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                  >
+                    Prev
+                  </Button>
 
-          <Pagination className="justify-end">
-            <PaginationContent>
-              {/* Previous */}
-              <PaginationItem>
-                <PaginationPrevious
-                  href="#"
-                  onClick={e => {
-                    e.preventDefault()
-                    if (page > 1) setPage(page - 1)
-                  }}
-                  className={page === 1 ? "pointer-events-none opacity-50" : ""}
-                />
-              </PaginationItem>
+                  <Select
+                    value={String(page)}
+                    onValueChange={v => setPage(Number(v))}
+                  >
+                    <SelectTrigger className="w-[110px]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: totalPages }).map((_, i) => {
+                        const pageNum = i + 1
+                        return (
+                          <SelectItem key={pageNum} value={String(pageNum)}>
+                            Page {pageNum}
+                          </SelectItem>
+                        )
+                      })}
+                    </SelectContent>
+                  </Select>
 
-              {/* Page numbers */}
-              {getPaginationPages(page, totalPages).map((item, index) => {
-                if (typeof item === "string") {
-                  return (
-                    <PaginationItem key={item + index}>
-                      <PaginationEllipsis />
-                    </PaginationItem>
-                  )
-                }
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={page === totalPages}
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                  >
+                    Next
+                  </Button>
+              </div>
+            </div>
 
-                return (
-                  <PaginationItem key={item}>
-                    <PaginationLink
+            <div className="hidden md:flex items-center justify-end gap-4">
+              <span className="text-sm text-muted-foreground shrink-0">
+                Page {page} of {totalPages}
+              </span>
+
+              <Pagination className="justify-end">
+                <PaginationContent>
+                  {/* Previous */}
+                  <PaginationItem>
+                    <PaginationPrevious
                       href="#"
-                      isActive={page === item}
                       onClick={e => {
                         e.preventDefault()
-                        setPage(item)
+                        if (page > 1) setPage(page - 1)
                       }}
-                    >
-                      {item}
-                    </PaginationLink>
+                      className={page === 1 ? "pointer-events-none opacity-50" : ""}
+                    />
                   </PaginationItem>
-                )
-              })}
 
-              {/* Next */}
-              <PaginationItem>
-                <PaginationNext
-                  href="#"
-                  onClick={e => {
-                    e.preventDefault()
-                    if (page < totalPages) setPage(page + 1)
-                  }}
-                  className={
-                    page === totalPages ? "pointer-events-none opacity-50" : ""
-                  }
-                />
-              </PaginationItem>
-            </PaginationContent>
-          </Pagination>
-        </div>
+                  {/* Page numbers */}
+                  {getPaginationPages(page, totalPages).map((item, index) => {
+                    if (typeof item === "string") {
+                      return (
+                        <PaginationItem key={item + index}>
+                          <PaginationEllipsis />
+                        </PaginationItem>
+                      )
+                    }
+
+                    return (
+                      <PaginationItem key={item}>
+                        <PaginationLink
+                          href="#"
+                          isActive={page === item}
+                          onClick={e => {
+                            e.preventDefault()
+                            setPage(item)
+                          }}
+                        >
+                          {item}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )
+                  })}
+
+                  {/* Next */}
+                  <PaginationItem>
+                    <PaginationNext
+                      href="#"
+                      onClick={e => {
+                        e.preventDefault()
+                        if (page < totalPages) setPage(page + 1)
+                      }}
+                      className={
+                        page === totalPages ? "pointer-events-none opacity-50" : ""
+                      }
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            </div>
+        </>
+
       )}
 
 
